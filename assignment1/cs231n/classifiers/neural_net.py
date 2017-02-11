@@ -74,7 +74,11 @@ class TwoLayerNet(object):
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    layer1 = X.dot(W1) + b1
+    layer2 = layer1
+    layer2[layer2<0] = 0
+    layer3 = layer2.dot(W2) + b2 
+    scores = layer3
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -92,7 +96,14 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+    num_classes = W2.shape[1]
+    num_train = X.shape[0]
+    max_score = np.max(scores, axis = 1).reshape(num_train,1)
+    scores -= max_score
+    L = -scores[np.arange(num_train),y] + np.log(np.sum(np.exp(scores), axis = 1))
+    loss = sum(L)
+    loss /= num_train
+    loss += 0.5 * reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -104,7 +115,27 @@ class TwoLayerNet(object):
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+    train_num = X.shape[0]
+    base = np.sum(np.exp(scores), axis = 1).reshape(num_train,1)
+    P = np.exp(scores) / base
+    mask = np.zeros_like(P)
+    mask[np.arange(num_train),y] = 1
+    P -= mask
+    dlayer3 = P / train_num
+    dW2 = layer2.T.dot(dlayer3)
+    dlayer2 = dlayer3.dot(W2.T)
+    dlayer1 = dlayer2 * (layer1 > 0)
+    dW1 = X.T.dot(dlayer1)
+    dW1 += reg * W1
+    dW2 += reg * W2
+    theta1 = np.ones((1,layer1.shape[0]))
+    theta3 = np.ones((1,layer3.shape[0]))
+    db1 = theta1.dot(dlayer1)
+    db2 = theta3.dot(dlayer3)
+    grads['W1'] = dW1
+    grads['W2'] = dW2
+    grads['b1'] = db1
+    grads['b2'] = db2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
