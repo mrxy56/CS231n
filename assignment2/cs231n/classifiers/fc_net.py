@@ -45,7 +45,10 @@ class TwoLayerNet(object):
     # weights and biases using the keys 'W1' and 'b1' and second layer weights #
     # and biases using the keys 'W2' and 'b2'.                                 #
     ############################################################################
-    pass
+    self.params['W1'] = np.random.randn(input_dim, hidden_dim) * weight_scale
+    self.params['W2'] = np.random.randn(hidden_dim, num_classes) * weight_scale
+    self.params['b1'] =	np.zeros(hidden_dim)
+    self.params['b2'] = np.zeros(num_classes)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -75,7 +78,18 @@ class TwoLayerNet(object):
     # TODO: Implement the forward pass for the two-layer net, computing the    #
     # class scores for X and storing them in the scores variable.              #
     ############################################################################
-    pass
+    W1 = self.params['W1']
+    W2 = self.params['W2']
+    b1 = self.params['b1']
+    b2 = self.params['b2']
+    N = X.shape[0]
+    features = X.shape[1:]
+    D = np.prod(features)
+    NewX = X.reshape(N,D)
+    layer1 = NewX.dot(W1) + b1
+    layer2 = layer1 * (layer1 > 0) #It shouldn't be layer1[layer1>0], which returns a vector
+    layer3 = layer2.dot(W2) + b2
+    scores = layer3
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -95,7 +109,32 @@ class TwoLayerNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    pass
+    max_score = np.max(scores, axis = 1).reshape(N, 1)
+    scores -= max_score
+    L = -scores[np.arange(N),y] + np.log(np.sum(np.exp(scores), axis = 1))
+    loss = sum(L)
+    loss /= N
+    loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+    base = np.sum(np.exp(scores), axis = 1).reshape(N,1)
+    P = np.exp(scores) / base
+    mask = np.zeros_like(P)
+    mask[np.arange(N),y] = 1
+    P -= mask
+    dlayer3 = P / N
+    dW2 =layer2.T.dot(dlayer3)
+    dlayer2 = dlayer3.dot(W2.T)
+    dlayer1 = dlayer2 * (layer1 > 0)
+    dW1 = X.T.dot(dlayer1)
+    dW1 += self.reg * W1
+    dW2 += self.reg * W2
+    theta1 = np.ones((1,layer1.shape[0]))
+    theta3 = np.ones((1,layer3.shape[0]))
+    db1 = theta1.dot(dlayer1).flatten()
+    db2 = theta3.dot(dlayer3).flatten()
+    grads['W1'] = dW1
+    grads['W2'] = dW2
+    grads['b1'] = db1
+    grads['b2'] = db2 
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
