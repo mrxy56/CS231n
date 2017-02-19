@@ -263,6 +263,10 @@ class FullyConnectedNet(object):
     														self.params['gamma' + str(i+1)], self.params['beta' + str(i+1)], self.bn_params[i])
     	else:
     		layer['L' + str(i+1)], cache['C' + str(i+1)] = affine_relu_forward(layer['L' + str(i)], self.params['W' + str(i+1)], self.params['b' + str(i+1)])
+
+        if self.use_dropout:
+            layer['L' + str(i+1)], cache['D' + str(i+1)] = dropout_forward(layer['L' + str(i+1)], self.dropout_param)
+
     layer['L' + str(self.num_layers)], cache['C' + str(self.num_layers)] = affine_forward(
     													layer['L' + str(self.num_layers-1)],
     													self.params['W' + str(self.num_layers)], 
@@ -297,6 +301,8 @@ class FullyConnectedNet(object):
     dlayer['D' + str(self.num_layers)], grads['W' + str(self.num_layers)], grads['b' + str(self.num_layers)] = affine_backward(dscore, cache['C' + str(self.num_layers)])
     grads['b' + str(self.num_layers)] = grads['b' + str(self.num_layers)].flatten()
     for i in range((self.num_layers)-1, 0, -1):
+        if self.use_dropout:
+            dlayer['D' + str(i + 1)] = dropout_backward(dlayer['D' + str(i + 1)], cache['D' + str(i)])
     	if self.use_batchnorm:
     		dlayer['D' + str(i)], grads['W' + str(i)], grads['b' + str(i)], grads['gamma' + str(i)], grads['beta' + str(i)] = affine_batch_relu_backward(dlayer['D' + str(i + 1)], cache['C' + str(i)])
     	else:
