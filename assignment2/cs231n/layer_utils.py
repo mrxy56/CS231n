@@ -30,7 +30,23 @@ def affine_relu_backward(dout, cache):
   return dx, dw, db
 
 
-pass
+def affine_batch_relu_forward(x, w, b, gamma, beta, bn_param):
+  a, fc_cache = affine_forward(x, w, b)
+  bn, bn_cache = batchnorm_forward(a, gamma, beta, bn_param)
+  out, relu_cache = relu_forward(bn)
+  cache = (fc_cache, bn_cache, relu_cache)
+  return out, cache
+
+
+def affine_batch_relu_backward(dout, cache):
+  """
+  Backward pass for the affine-relu convenience layer
+  """
+  fc_cache, bn_cache, relu_cache = cache
+  dbn = relu_backward(dout, relu_cache)
+  da, dgamma, dbeta = batchnorm_backward_alt(dbn, bn_cache)
+  dx, dw, db = affine_backward(da, fc_cache)
+  return dx, dw, db, dgamma, dbeta
 
 
 def conv_relu_forward(x, w, b, conv_param):

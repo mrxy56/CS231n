@@ -111,6 +111,8 @@ class TwoLayerNet(object):
     dlayer2, dW2, db2 = affine_backward(dscore, cache3)
     dlayer1 = relu_backward(dlayer2, cache2)
     dX, dW1, db1 = affine_backward(dlayer1, cache1)
+    dW1 += self.reg * self.params['W1']
+    dW2 += self.reg * self.params['W2']
     grads['W1'] = dW1
     grads['W2'] = dW2
     grads['b1'] = db1.flatten()
@@ -187,6 +189,11 @@ class FullyConnectedNet(object):
     	self.params['b'+str(i+1)] =	np.zeros(hidden_dims[i])
     self.params['W'+str(self.num_layers)] = np.random.randn(hidden_dims[self.num_layers-2], num_classes) * weight_scale
     self.params['b'+str(self.num_layers)] =	np.zeros(num_classes)
+
+    if self.use_batchnorm:
+    	for i in range(self.num_layers-1):
+    		self.params['gamma' + str(i+1)] = np.ones(hidden_dims[i])
+    		self.params['beta' + str(i+1)] = np.zeros(hidden_dims[i])
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -226,10 +233,10 @@ class FullyConnectedNet(object):
     # Set train/test mode for batchnorm params and dropout param since they
     # behave differently during training and testing.
     if self.dropout_param is not None:
-      self.dropout_param['mode'] = mode   
+      self.dropout_param['mode'] = mode  
     if self.use_batchnorm:
       for bn_param in self.bn_params:
-        bn_param[mode] = mode
+        bn_param['mode'] = mode
 
     scores = None
     ############################################################################
@@ -251,7 +258,11 @@ class FullyConnectedNet(object):
     cache = {}
     layer['L0'] = X
     for i in range(self.num_layers-1):
-    	layer['L' + str(i+1)], cache['C' + str(i+1)] = affine_relu_forward(layer['L' + str(i)], self.params['W' + str(i+1)], self.params['b' + str(i+1)])
+    	if self.use_batchnorm:
+    		layer['L' + str(i+1)], cache['C' + str(i+1)] = affine_batch_relu_forward(layer['L' + str(i)], self.params['W' + str(i+1)], self.params['b' + str(i+1)],
+    														self.params['gamma' + str(i+1)], self.params['beta' + str(i+1)], self.bn_params[i])
+    	else:
+    		layer['L' + str(i+1)], cache['C' + str(i+1)] = affine_relu_forward(layer['L' + str(i)], self.params['W' + str(i+1)], self.params['b' + str(i+1)])
     layer['L' + str(self.num_layers)], cache['C' + str(self.num_layers)] = affine_forward(
     													layer['L' + str(self.num_layers-1)],
     													self.params['W' + str(self.num_layers)], 
@@ -281,13 +292,18 @@ class FullyConnectedNet(object):
     ############################################################################
     loss, dscore= softmax_loss(scores,y)
     for i in range(self.num_layers):
-    	loss += 0.5 * self.reg * np.sum(self.params['W' + str(i + 1)])
+    	loss += 0.5 * self.reg * np.sum(self.params['W' + str(i + 1)] * self.params['W' + str(i + 1)])
     dlayer = {}
     dlayer['D' + str(self.num_layers)], grads['W' + str(self.num_layers)], grads['b' + str(self.num_layers)] = affine_backward(dscore, cache['C' + str(self.num_layers)])
     grads['b' + str(self.num_layers)] = grads['b' + str(self.num_layers)].flatten()
     for i in range((self.num_layers)-1, 0, -1):
-    	dlayer['D' + str(i)], grads['W' + str(i)], grads['b' + str(i)] = affine_relu_backward(dlayer['D' + str(i + 1)], cache['C' + str(i)])
+    	if self.use_batchnorm:
+    		dlayer['D' + str(i)], grads['W' + str(i)], grads['b' + str(i)], grads['gamma' + str(i)], grads['beta' + str(i)] = affine_batch_relu_backward(dlayer['D' + str(i + 1)], cache['C' + str(i)])
+    	else:
+    		dlayer['D' + str(i)], grads['W' + str(i)], grads['b' + str(i)] = affine_relu_backward(dlayer['D' + str(i + 1)], cache['C' + str(i)])
     	grads['b' + str(i)] = grads['b' + str(i)].flatten()
+    for i in range(0, self.num_layers):
+    	grads['W' + str(i+1)] += self.reg * self.params['W' + str(i+1)]
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
